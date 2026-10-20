@@ -1,0 +1,154 @@
+@use "@carbon/styles/scss/config" with (
+  $css--font-face: false
+);
+@use "./tokens";
+@use "@carbon/styles/scss/components/button";
+@use "@carbon/styles/scss/components/text-input";
+@use "@carbon/styles/scss/components/text-area";
+@use "@carbon/styles/scss/components/select";
+@use "@carbon/styles/scss/components/checkbox";
+@use "@carbon/styles/scss/components/content-switcher";
+@use "@carbon/styles/scss/components/inline-loading";
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: var(--cds-spacing-05);
+  font: 400 1rem/1.5 var(--folio-font-family);
+  color: var(--cds-text-primary);
+  background: var(--cds-background);
+}
+// Saved artifacts keep their code. Only deprecated CSS variable names are bridged.
+:root {
+  --md-sys-color-primary: var(--cds-interactive);
+  --md-sys-color-on-surface: var(--cds-text-primary);
+  --md-sys-color-on-surface-variant: var(--cds-text-secondary);
+}
+#artifact > main,
+#artifact > div > main {
+  background: transparent !important;
+  color: inherit !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+}
+#artifact main > h1:first-child,
+#artifact main > h2:first-child,
+#artifact main > header > h1:first-child,
+#artifact main > header > h2:first-child {
+  display: none;
+}
+main {
+  width: 100%;
+  min-width: 0;
+}
+.controls {
+  display: flex;
+  gap: var(--cds-spacing-05);
+  flex-wrap: wrap;
+  margin-bottom: var(--cds-spacing-05);
+  align-items: end;
+}
+.controls > * {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+:where(label) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-03);
+  min-width: 0;
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+}
+:where(input, select, textarea, button) {
+  max-width: 100%;
+  font: inherit;
+}
+:where(input, select, textarea) {
+  color: var(--cds-text-primary);
+  background: var(--cds-field-01);
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--cds-border-strong-01);
+  padding: var(--cds-spacing-03) var(--cds-spacing-05);
+  min-height: 2rem;
+}
+:where(button) {
+  cursor: pointer;
+}
+:where(button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+.analysis-notes {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--cds-text-secondary);
+  margin: var(--cds-spacing-03) 0 var(--cds-spacing-05);
+  overflow-wrap: anywhere;
+}
+.analysis-notes span {
+  display: inline-block;
+  margin-right: var(--cds-spacing-04);
+}
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-06);
+}
+.metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cds-spacing-03);
+}
+.metrics strong {
+  font-size: 1.75rem;
+  font-weight: 400;
+}
+.metrics span {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.875rem;
+}
+th,
+td {
+  text-align: left;
+  padding: var(--cds-spacing-04) var(--cds-spacing-05);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+}
+th {
+  background: var(--cds-layer-accent-01);
+  font-weight: 600;
+}
+svg {
+  max-width: 100%;
+}
+.recharts-text {
+  font-family: var(--folio-font-family);
+  fill: var(--cds-text-secondary);
+}
+.recharts-cartesian-axis-tick-value {
+  font-size: 0.875rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// Whole date labels for new views; source/result tables already keep cell values intact.
+time {
+  white-space: nowrap;
+}

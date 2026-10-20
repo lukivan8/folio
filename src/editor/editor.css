@@ -1,0 +1,243 @@
+/* Tiptap owns editing; surrounding controls are Carbon React. */
+.editor-shell,
+.editor-body {
+  position: relative;
+}
+.format-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cds-spacing-02);
+  min-height: 3rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  margin-bottom: var(--cds-spacing-06);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--cds-background);
+}
+.toolbar-divider {
+  width: 1px;
+  height: var(--cds-spacing-05);
+  background: var(--cds-border-subtle-01);
+  margin: 0 var(--cds-spacing-02);
+}
+.toolbar-right {
+  margin-left: auto;
+}
+.prose-editor {
+  outline: none;
+  min-height: 12rem;
+  font-family: var(--folio-font-family);
+  font-size: var(--cds-body-02-font-size);
+  line-height: var(--cds-body-02-line-height);
+  color: var(--cds-text-primary);
+}
+.prose-editor:focus-visible {
+  outline: none;
+}
+.prose-editor p {
+  margin: 0 0 var(--cds-spacing-05);
+  line-height: 1.5;
+}
+.prose-editor strong {
+  font-weight: 600;
+}
+.prose-editor h1 {
+  font-size: var(--cds-heading-04-font-size);
+  line-height: var(--cds-heading-04-line-height);
+  font-weight: 400;
+  margin: var(--cds-spacing-07) 0 var(--cds-spacing-05);
+}
+.prose-editor h2 {
+  font-size: var(--cds-heading-03-font-size);
+  line-height: var(--cds-heading-03-line-height);
+  font-weight: 400;
+  margin: var(--cds-spacing-07) 0 var(--cds-spacing-04);
+}
+.prose-editor h3 {
+  font-size: var(--cds-heading-02-font-size);
+  line-height: var(--cds-heading-02-line-height);
+  font-weight: 600;
+  margin: var(--cds-spacing-06) 0 var(--cds-spacing-04);
+}
+.prose-editor blockquote {
+  border-left: 2px solid var(--cds-border-strong-01);
+  margin: var(--cds-spacing-05) 0;
+  padding: var(--cds-spacing-03) var(--cds-spacing-05);
+  color: var(--cds-text-secondary);
+}
+.prose-editor blockquote p {
+  margin: 0;
+}
+.prose-editor a {
+  color: var(--cds-link-primary);
+  text-decoration: underline;
+  text-underline-offset: var(--cds-spacing-02);
+}
+.prose-editor code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: var(--cds-code-02-font-size);
+  background: var(--cds-layer-01);
+  padding: 0 var(--cds-spacing-02);
+}
+.prose-editor ul,
+.prose-editor ol {
+  padding-left: var(--cds-spacing-06);
+}
+.prose-editor ul {
+  list-style: disc;
+}
+.prose-editor ol {
+  list-style: decimal;
+}
+.prose-editor li p {
+  margin: var(--cds-spacing-02) 0;
+}
+.prose-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: var(--cds-spacing-05) 0;
+}
+.prose-editor th,
+.prose-editor td {
+  border: 1px solid var(--cds-border-subtle-01);
+  padding: var(--cds-spacing-04) var(--cds-spacing-05);
+  min-width: 3rem;
+  position: relative;
+}
+.prose-editor th {
+  background: var(--cds-layer-accent-01);
+  font-weight: 600;
+}
+.prose-editor td p,
+.prose-editor th p {
+  margin: 0;
+}
+.prose-editor .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--cds-highlight);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.prose-editor .ProseMirror-selectednode {
+  outline: 1px solid var(--cds-border-interactive);
+  outline-offset: var(--cds-spacing-02);
+}
+.prose-editor
+  > p:first-child:has(> br.ProseMirror-trailingBreak:only-child)::before {
+  content: "Write something, or type / to insert a block";
+  color: var(--cds-text-placeholder);
+  float: left;
+  pointer-events: none;
+  height: 0;
+}
+.block-controls {
+  position: absolute;
+  left: calc(-1 * var(--cds-spacing-08));
+  top: 0;
+  display: flex;
+  opacity: 0;
+  z-index: 11;
+  transition: top var(--folio-motion-fast) ease;
+}
+.editor-body:hover .block-controls,
+.block-controls:focus-within {
+  opacity: 1;
+}
+.block-drag-button {
+  display: grid;
+  place-items: center;
+  width: var(--cds-spacing-05);
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--cds-icon-secondary);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.block-drag-button:hover {
+  background: var(--cds-layer-hover-01);
+}
+.block-drag-button:active {
+  cursor: grabbing;
+}
+.block-drop-guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cds-border-interactive);
+  pointer-events: none;
+  z-index: 11;
+}
+.insert-end {
+  margin: var(--cds-spacing-05) 0;
+}
+.insert-end span {
+  color: var(--cds-text-secondary);
+  font-size: var(--cds-label-01-font-size);
+  margin-left: var(--cds-spacing-03);
+}
+.slash-menu {
+  position: absolute;
+  left: 0;
+  z-index: 7000;
+  width: 20rem;
+  max-width: calc(100vw - 3rem);
+  max-height: 24rem;
+  overflow: auto;
+  background: var(--cds-layer-01);
+  box-shadow: var(--folio-shadow);
+}
+
+.menu-caption {
+  color: var(--cds-text-secondary);
+  padding: var(--cds-spacing-04) var(--cds-spacing-05);
+  font-size: var(--cds-label-01-font-size);
+}
+.slash-menu .command-option {
+  display: flex;
+  align-items: center;
+  gap: var(--cds-spacing-04);
+  min-height: 3rem;
+  padding-block: var(--cds-spacing-03);
+}
+.slash-menu strong {
+  display: block;
+  font-weight: 600;
+}
+.slash-menu small {
+  display: block;
+  color: var(--cds-text-secondary);
+  font-size: var(--cds-label-01-font-size);
+}
+.command-icon {
+  display: grid;
+  place-items: center;
+  width: var(--cds-spacing-06);
+}
+.prose-editor[contenteditable="false"] ~ .block-controls {
+  display: none;
+}
+@media (hover: none) {
+  .block-controls {
+    opacity: 1;
+  }
+}
+
+.slash-menu .command-option {
+  width: 100%;
+  max-width: none;
+  justify-content: start;
+  text-align: start;
+}
+.slash-menu .command-option[aria-selected="true"] {
+  background: var(--cds-layer-selected-01);
+}

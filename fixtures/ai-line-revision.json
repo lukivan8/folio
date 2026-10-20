@@ -1,0 +1,303 @@
+{
+  "files": {
+    "manifest": {
+      "version": 1,
+      "title": "Explore product-usage",
+      "sourceIds": [
+        "4455a66f-97eb-4852-b492-89adb634ded3"
+      ],
+      "parameters": [
+        {
+          "id": "search",
+          "label": "Filter groups",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "aggregation",
+          "label": "Aggregation",
+          "type": "string",
+          "default": "sum",
+          "options": [
+            "sum",
+            "average",
+            "count"
+          ]
+        },
+        {
+          "id": "chart",
+          "label": "Chart style",
+          "type": "string",
+          "default": "line",
+          "options": [
+            "bar",
+            "line"
+          ]
+        }
+      ],
+      "methods": [
+        {
+          "id": "aggregate",
+          "title": "Group and aggregate",
+          "description": "Group all accepted rows by date. Filter matching groups locally.",
+          "columns": [
+            "c0",
+            "c1"
+          ],
+          "formula": "Sum / average of valid numeric values, or row count, per group.",
+          "units": "active_users for sum and average; source rows for count",
+          "missing": "Blank groups appear as (missing). Blank numeric values are excluded from numeric aggregation and counted in exclusions. Row count includes rows with missing numeric values. Search-filtered rows are excluded.",
+          "assumptions": "No deduplication. Count means source row count, not distinct users. Summing reported active_users does not deduplicate users across records. Dates remain source calendar dates. Search is case-insensitive. Imported types and delimiter are user-confirmed.",
+          "outputs": [
+            "summary"
+          ]
+        }
+      ]
+    },
+    "analysis": "export async function analyze(ctx){const s=ctx.sources.find(s=>s.id==='4455a66f-97eb-4852-b492-89adb634ded3');if(!s)throw new Error('Required source unavailable.');const g=s.columns.findIndex(c=>c.id==='c0');const v=s.columns.findIndex(c=>c.id==='c1');if(g<0||v<0)throw new Error('Required columns unavailable.');const groups=new Map();let included=0,excluded=0;const mode=ctx.params.aggregation||'sum';for(const row of s.rows){const key=row[g]||'(missing)';if(!key.toLowerCase().includes(String(ctx.params.search||'').toLowerCase())){excluded++;continue;}const raw=row[v]||'';if(mode!=='count'&&(raw.trim()===''||!Number.isFinite(Number(raw)))){excluded++;continue;}const a=groups.get(key)||{sum:0,n:0};if(mode!=='count')a.sum+=Number(raw);a.n++;groups.set(key,a);included++;}const rows=[...groups].sort((a,b)=>a[0].localeCompare(b[0])).map(([key,a])=>[key,mode==='average'?a.sum/a.n:mode==='sum'?a.sum:a.n]);return {datasets:{summary:{columns:['date',mode==='count'?'row_count':'active_users'],rows,methodId:'aggregate',units:mode==='count'?'source rows':'active_users'}},inputRows:s.rows.length,includedRows:included,excludedRows:excluded,warnings:[],checks:[]};}",
+    "view": "import React from 'react';import{ResponsiveContainer,BarChart,Bar,LineChart,Line,XAxis,YAxis,CartesianGrid,Tooltip}from'recharts';export function View({result,params,setParams}){const style={background:'#f4f7f0',color:'#243b2e',borderRadius:20,padding:20,fontFamily:'system-ui,sans-serif'};if(!result)return <main style={style} role=\"status\">Loading usage data\u2026</main>;if(!result.datasets?.summary)return <main style={style} role=\"alert\">Usage data could not be loaded.</main>;const t=result.datasets.summary;const data=t.rows.map(r=>({name:r[0],value:r[1]}));const chart=params.chart||'line';const Chart=chart==='line'?LineChart:BarChart;return <main style={style}><div className=\"controls\" style={{display:'flex',flexWrap:'wrap',gap:16}}><label>Filter groups<input aria-label=\"Filter groups\" value={params.search||''} placeholder=\"Search\u2026\" onChange={e=>setParams({search:e.target.value})}/></label><label>Aggregation<select value={params.aggregation||'sum'} onChange={e=>setParams({aggregation:e.target.value})}><option value=\"sum\">Sum</option><option value=\"average\">Average</option><option value=\"count\">Row count</option></select></label><label>Chart<select value={chart} onChange={e=>setParams({chart:e.target.value})}><option value=\"bar\">Bars</option><option value=\"line\">Line</option></select></label></div><div className=\"metrics\" style={{display:'flex',flexWrap:'wrap',gap:24,margin:'20px 0'}}><div><strong>{result.includedRows.toLocaleString()}</strong><span> included rows</span></div><div><strong>{data.length.toLocaleString()}</strong><span> groups</span></div><div><strong>{result.excludedRows.toLocaleString()}</strong><span> excluded rows</span></div></div><p>{t.units} by date \u00b7 {params.aggregation||'sum'}</p>{!data.length?<p>No rows match these filters.</p>:<ResponsiveContainer width=\"100%\" height={260}><Chart data={data}><CartesianGrid strokeDasharray=\"3 3\" vertical={false} stroke=\"#e4e8e1\"/><XAxis dataKey=\"name\" tickLine={false} axisLine={false} fontSize={11}/><YAxis tickLine={false} axisLine={false} width={60} fontSize={11}/><Tooltip/>{chart==='line'?<Line dataKey=\"value\" name={t.units} stroke=\"#356650\" strokeWidth={3} dot={false}/>:<Bar dataKey=\"value\" name={t.units} fill=\"#47745d\" radius={[5,5,0,0]}/>}</Chart></ResponsiveContainer>}</main>;}",
+    "checks": "export function checks(result,ctx){const table=result.datasets.summary;const s=ctx.sources.find(s=>s.id==='4455a66f-97eb-4852-b492-89adb634ded3');if(!s)return [{name:'Required source present',passed:false}];const g=s.columns.findIndex(c=>c.id==='c0'),v=s.columns.findIndex(c=>c.id==='c1');const mode=ctx.params.aggregation||'sum',query=String(ctx.params.search||'').toLowerCase();const accepted=s.rows.filter(r=>(r[g]||'(missing)').toLowerCase().includes(query)&&(mode==='count'||((r[v]||'').trim()!==''&&Number.isFinite(Number(r[v])))));const keys=[...new Set(accepted.map(r=>r[g]||'(missing)'))];const correct=keys.length===table.rows.length&&keys.every(key=>{const records=accepted.filter(r=>(r[g]||'(missing)')===key);const total=records.reduce((a,r)=>a+(mode==='count'?1:Number(r[v])),0);const expected=mode==='average'?total/records.length:total;const actual=table.rows.find(r=>r[0]===key)?.[1];return typeof actual==='number'&&Math.abs(actual-expected)<=1e-9*Math.max(1,Math.abs(expected));});return [{name:'All source rows accounted for',passed:result.inputRows===s.rows.length&&result.includedRows+result.excludedRows===s.rows.length},{name:'Included rows match independent filter',passed:result.includedRows===accepted.length},{name:'Aggregates match independent calculation',passed:correct},{name:'Finite aggregate values',passed:table.rows.every(r=>Number.isFinite(r[1]))},{name:'One output per group',passed:new Set(table.rows.map(r=>r[0])).size===table.rows.length}];}"
+  },
+  "sources": [
+    {
+      "id": "4455a66f-97eb-4852-b492-89adb634ded3",
+      "revision": "ea512eba-1aa3-4b89-86c7-fe7716485ab1",
+      "name": "product-usage.csv",
+      "imported": "2026-10-20T15:51:48.515Z",
+      "hash": "d9d3dbd8129c84b56b282b0b24d28f6c897de0fcd0d2ecc73ad20af33ddf4a42",
+      "bytes": 812,
+      "original": "ZGF0ZSxhY3RpdmVfdXNlcnMsc2lnbnVwcyx3b3Jrc3BhY2VfaWQKMjAyNi0xMC0wMSw4MjAsMzAsMDAwMDEKMjAyNi0xMC0wMiw4OTQsMzksMDAwMDIKMjAyNi0xMC0wMyw5NjgsNDgsMDAwMDMKMjAyNi0xMC0wNCwxMDQyLDU3LDAwMDA0CjIwMjYtMTAtMDUsMTExNiwzOCwwMDAwNQoyMDI2LTEwLTA2LDExOTAsNDcsMDAwMDEKMjAyNi0xMC0wNywxMjY0LDU2LDAwMDAyCjIwMjYtMTAtMDgsOTgxLDY1LDAwMDAzCjIwMjYtMTAtMDksMTA1NSw0NiwwMDAwNAoyMDI2LTEwLTEwLDExMjksNTUsMDAwMDUKMjAyNi0xMC0xMSwxMjAzLDY0LDAwMDAxCjIwMjYtMTAtMTIsMTI3Nyw3MywwMDAwMgoyMDI2LTEwLTEzLDEzNTEsNTQsMDAwMDMKMjAyNi0xMC0xNCwxNDI1LDYzLDAwMDA0CjIwMjYtMTAtMTUsMTE0Miw3MiwwMDAwNQoyMDI2LTEwLTE2LDEyMTYsODEsMDAwMDEKMjAyNi0xMC0xNywxMjkwLDYyLDAwMDAyCjIwMjYtMTAtMTgsMTM2NCw3MSwwMDAwMwoyMDI2LTEwLTE5LDE0MzgsODAsMDAwMDQKMjAyNi0xMC0yMCwxNTEyLDg5LDAwMDA1CjIwMjYtMTAtMjEsMTU4Niw3MCwwMDAwMQoyMDI2LTEwLTIyLDEzMDMsNzksMDAwMDIKMjAyNi0xMC0yMywxMzc3LDg4LDAwMDAzCjIwMjYtMTAtMjQsMTQ1MSw5NywwMDAwNAoyMDI2LTEwLTI1LDE1MjUsNzgsMDAwMDUKMjAyNi0xMC0yNiwxNTk5LDg3LDAwMDAxCjIwMjYtMTAtMjcsMTY3Myw5NiwwMDAwMgoyMDI2LTEwLTI4LDE3NDcsMTA1LDAwMDAzCjIwMjYtMTAtMjksMTQ2NCw4NiwwMDAwNAoyMDI2LTEwLTMwLDE1MzgsOTUsMDAwMDUKMjAyNi0xMC0zMSwxNjEyLDEwNCwwMDAwMQo=",
+      "text": "date,active_users,signups,workspace_id\n2026-10-01,820,30,00001\n2026-10-02,894,39,00002\n2026-10-03,968,48,00003\n2026-10-04,1042,57,00004\n2026-10-05,1116,38,00005\n2026-10-06,1190,47,00001\n2026-10-07,1264,56,00002\n2026-10-08,981,65,00003\n2026-10-09,1055,46,00004\n2026-10-10,1129,55,00005\n2026-10-11,1203,64,00001\n2026-10-12,1277,73,00002\n2026-10-13,1351,54,00003\n2026-10-14,1425,63,00004\n2026-10-15,1142,72,00005\n2026-10-16,1216,81,00001\n2026-10-17,1290,62,00002\n2026-10-18,1364,71,00003\n2026-10-19,1438,80,00004\n2026-10-20,1512,89,00005\n2026-10-21,1586,70,00001\n2026-10-22,1303,79,00002\n2026-10-23,1377,88,00003\n2026-10-24,1451,97,00004\n2026-10-25,1525,78,00005\n2026-10-26,1599,87,00001\n2026-10-27,1673,96,00002\n2026-10-28,1747,105,00003\n2026-10-29,1464,86,00004\n2026-10-30,1538,95,00005\n2026-10-31,1612,104,00001\n",
+      "delimiter": ",",
+      "header": true,
+      "columns": [
+        {
+          "id": "c0",
+          "original": "date",
+          "label": "date",
+          "type": "date",
+          "missing": [
+            ""
+          ]
+        },
+        {
+          "id": "c1",
+          "original": "active_users",
+          "label": "active_users",
+          "type": "number",
+          "missing": [
+            ""
+          ]
+        },
+        {
+          "id": "c2",
+          "original": "signups",
+          "label": "signups",
+          "type": "number",
+          "missing": [
+            ""
+          ]
+        },
+        {
+          "id": "c3",
+          "original": "workspace_id",
+          "label": "workspace_id",
+          "type": "text",
+          "missing": [
+            ""
+          ]
+        }
+      ],
+      "rows": [
+        [
+          "2026-10-01",
+          "820",
+          "30",
+          "00001"
+        ],
+        [
+          "2026-10-02",
+          "894",
+          "39",
+          "00002"
+        ],
+        [
+          "2026-10-03",
+          "968",
+          "48",
+          "00003"
+        ],
+        [
+          "2026-10-04",
+          "1042",
+          "57",
+          "00004"
+        ],
+        [
+          "2026-10-05",
+          "1116",
+          "38",
+          "00005"
+        ],
+        [
+          "2026-10-06",
+          "1190",
+          "47",
+          "00001"
+        ],
+        [
+          "2026-10-07",
+          "1264",
+          "56",
+          "00002"
+        ],
+        [
+          "2026-10-08",
+          "981",
+          "65",
+          "00003"
+        ],
+        [
+          "2026-10-09",
+          "1055",
+          "46",
+          "00004"
+        ],
+        [
+          "2026-10-10",
+          "1129",
+          "55",
+          "00005"
+        ],
+        [
+          "2026-10-11",
+          "1203",
+          "64",
+          "00001"
+        ],
+        [
+          "2026-10-12",
+          "1277",
+          "73",
+          "00002"
+        ],
+        [
+          "2026-10-13",
+          "1351",
+          "54",
+          "00003"
+        ],
+        [
+          "2026-10-14",
+          "1425",
+          "63",
+          "00004"
+        ],
+        [
+          "2026-10-15",
+          "1142",
+          "72",
+          "00005"
+        ],
+        [
+          "2026-10-16",
+          "1216",
+          "81",
+          "00001"
+        ],
+        [
+          "2026-10-17",
+          "1290",
+          "62",
+          "00002"
+        ],
+        [
+          "2026-10-18",
+          "1364",
+          "71",
+          "00003"
+        ],
+        [
+          "2026-10-19",
+          "1438",
+          "80",
+          "00004"
+        ],
+        [
+          "2026-10-20",
+          "1512",
+          "89",
+          "00005"
+        ],
+        [
+          "2026-10-21",
+          "1586",
+          "70",
+          "00001"
+        ],
+        [
+          "2026-10-22",
+          "1303",
+          "79",
+          "00002"
+        ],
+        [
+          "2026-10-23",
+          "1377",
+          "88",
+          "00003"
+        ],
+        [
+          "2026-10-24",
+          "1451",
+          "97",
+          "00004"
+        ],
+        [
+          "2026-10-25",
+          "1525",
+          "78",
+          "00005"
+        ],
+        [
+          "2026-10-26",
+          "1599",
+          "87",
+          "00001"
+        ],
+        [
+          "2026-10-27",
+          "1673",
+          "96",
+          "00002"
+        ],
+        [
+          "2026-10-28",
+          "1747",
+          "105",
+          "00003"
+        ],
+        [
+          "2026-10-29",
+          "1464",
+          "86",
+          "00004"
+        ],
+        [
+          "2026-10-30",
+          "1538",
+          "95",
+          "00005"
+        ],
+        [
+          "2026-10-31",
+          "1612",
+          "104",
+          "00001"
+        ]
+      ],
+      "warnings": [],
+      "confirmed": true
+    }
+  ]
+}

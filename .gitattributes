@@ -1,0 +1,9 @@
+* text=auto
+*.sh text eol=lf
+*.command text eol=lf
+*.png binary
+*.icns binary
+# Markdown intentionally uses two spaces for hard line breaks.
+*.md whitespace=-blank-at-eol
+# Preserve original upstream notices byte-for-byte.
+docs/third-party-licenses/** -text -whitespace

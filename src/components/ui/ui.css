@@ -1,0 +1,4 @@
+/* Component visuals and behavior are supplied by @carbon/react. */
+.folio-action-icon {
+  margin-inline-end: var(--cds-spacing-03);
+}

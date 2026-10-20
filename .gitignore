@@ -1,0 +1,30 @@
+# Installed dependencies and generated builds
+node_modules/
+dist/
+build-electron/
+release/
+storybook-static/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Local development, private data, and credentials
+.local/
+work/
+.env
+.env.*
+!.env.example
+.npmrc
+auth.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+
+# OS/editor state
+.DS_Store
+.AppleDouble
+.idea/
+.vscode/

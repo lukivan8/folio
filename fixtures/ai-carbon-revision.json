@@ -1,0 +1,311 @@
+{
+  "files": {
+    "manifest": {
+      "version": 1,
+      "title": "Explore product-usage",
+      "sourceIds": [
+        "1c3f83a2-fb7c-4a76-91f3-2175eefe7a5b"
+      ],
+      "parameters": [
+        {
+          "id": "search",
+          "label": "Filter dates",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "workspace",
+          "label": "Workspace",
+          "type": "string",
+          "default": ""
+        },
+        {
+          "id": "aggregation",
+          "label": "Daily aggregation",
+          "type": "string",
+          "default": "sum",
+          "options": [
+            "sum",
+            "average"
+          ]
+        }
+      ],
+      "methods": [
+        {
+          "id": "daily",
+          "title": "Daily source-reported active users",
+          "description": "Filter calendar dates and exact workspace IDs, then aggregate valid active_users records by day. Workspace identifiers remain strings.",
+          "columns": [
+            "c0",
+            "c1",
+            "c3"
+          ],
+          "formula": "For each date: sum(active_users), or sum(active_users) / number of valid records.",
+          "units": "users",
+          "missing": "Exclude filtered records, missing or invalid ISO dates, and blank, nonfinite, negative or noninteger active_users values. Missing workspace IDs remain included when all workspaces are selected. Missing dates are not filled with zero.",
+          "assumptions": "Source-reported daily aggregates, not independently verified distinct users. No deduplication. Summing workspace records may double-count people; averaging records is not overall DAU. Workspace coverage can change by date. Dates are source calendar dates rendered in UTC. Future-dated rows are retained and flagged; refresh time and completeness are unknown. signups is not used.",
+          "outputs": [
+            "daily",
+            "workspaces",
+            "provenance"
+          ]
+        }
+      ],
+      "blockId": "a88a43f4-4950-495a-bf44-718e1998fb8a",
+      "revisionId": "07c46aa2-d66f-4cbe-a2e0-f7aea9e1de35",
+      "sourceRevisions": {
+        "1c3f83a2-fb7c-4a76-91f3-2175eefe7a5b": "0f81394b-7808-4ec0-b86c-61f0bc47dd44"
+      },
+      "entryPoints": {
+        "analysis": "analysis.ts",
+        "view": "view.tsx",
+        "checks": "checks.ts"
+      }
+    },
+    "analysis": "export async function analyze(ctx){\n const s=ctx.sources.find(s=>s.id==='1c3f83a2-fb7c-4a76-91f3-2175eefe7a5b');\n if(!s)throw new Error('Required source is unavailable.');\n const ix=id=>s.columns.findIndex(c=>c.id===id);const d=ix('c0'),v=ix('c1'),w=ix('c3');if([d,v,w].some(i=>i<0))throw new Error('Required columns are unavailable.');\n const search=String(ctx.params.search||'').toLowerCase(),workspace=String(ctx.params.workspace||''),mode=ctx.params.aggregation==='average'?'average':'sum';\n const groups=new Map();let included=0,filtered=0,invalid=0,future=0;const today=new Date().toISOString().slice(0,10);\n for(const r of s.rows){const date=r[d]||'',ws=r[w]||'',raw=(r[v]||'').trim();if(!date.toLowerCase().includes(search)||(workspace!==''&&ws!==workspace)){filtered++;continue;}\n const stamp=Date.parse(date+'T00:00:00Z'),n=Number(raw);if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!Number.isFinite(stamp)||new Date(stamp).toISOString().slice(0,10)!==date||raw===''||!Number.isFinite(n)||n<0||!Number.isInteger(n)){invalid++;continue;}\n const g=groups.get(date)||{sum:0,n:0,ws:new Set()};g.sum+=n;g.n++;g.ws.add(ws);groups.set(date,g);included++;if(date>today)future++;\n }\n const rows=[...groups].sort(([a],[b])=>a.localeCompare(b)).map(([date,g])=>[date,mode==='average'?g.sum/g.n:g.sum,g.n,[...g.ws].sort().join(', ')]);\n const warnings=['Source-reported active_users; distinct-user methodology and refresh time are unknown.','Workspace coverage may change by date. Sums can double-count people across workspaces; averages describe records, not overall DAU.','Missing days are not zero-filled; lines connect observed dates. Current-day and latest-period completeness are unknown.'];\n if(future)warnings.push(future+' future-dated records retained relative to '+today+' (UTC); these are not verified observations.');if(invalid)warnings.push(invalid+' matching records excluded for invalid dates or active_users.');\n return {datasets:{daily:{columns:['date','active_users','records','workspace_ids'],rows,methodId:'daily',units:'users'},workspaces:{columns:['workspace_id'],rows:[...new Set(s.rows.map(r=>r[w]||'').filter(Boolean))].sort().map(x=>[x]),methodId:'daily'},provenance:{columns:['revision','aggregation','filtered_rows','invalid_rows','as_of_utc'],rows:[[String(s.revision||'Unknown'),mode,filtered,invalid,today]],methodId:'daily'}},inputRows:s.rows.length,includedRows:included,excludedRows:filtered+invalid,warnings,checks:[]};\n}",
+    "view": "import React from 'react';\nimport {LineChart,ScaleTypes} from '@carbon/charts-react';\nimport {TextInput,Select,SelectItem,Table,TableHead,TableRow,TableHeader,TableBody,TableCell} from '@carbon/react';\nimport {carbon} from '@folio/sdk';\nexport function View({result,params,setParams}){\n if(!result)return <p role=\"status\">Loading usage data\u2026</p>;\n if(!result.datasets?.daily)return <p role=\"alert\">Usage data is unavailable.</p>;\n const t=result.datasets.daily,p=result.datasets.provenance.rows[0],average=p[1]==='average';\n const data=t.rows.map(r=>({group:average?'Average reported active users':'Reported active users',date:new Date(String(r[0])+'T00:00:00Z'),value:r[1]}));\n const formatDate=x=>new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',timeZone:'UTC'}).format(new Date(x));\n const options={...carbon.chartOptions,theme:'white',height:'360px',axes:{bottom:{mapsTo:'date',scaleType:ScaleTypes.TIME,title:'Date (UTC display)',ticks:{formatter:formatDate}},left:{mapsTo:'value',scaleType:ScaleTypes.LINEAR,title:average?'Users (record average)':'Users (sum)',includeZero:true}},legend:{enabled:false},curve:'curveLinear',accessibility:{svgAriaLabel:'Daily source-reported active users in users. Workspace coverage may vary; see the data table and caveats.'}};\n return <section aria-label=\"Daily usage exploration\" style={{display:'grid',gap:'var(--cds-spacing-05)'}}>\n <div style={{display:'flex',flexWrap:'wrap',gap:'var(--cds-spacing-05)',alignItems:'end'}}>\n <TextInput id=\"usage-date-filter\" labelText=\"Filter dates\" helperText=\"Matches source YYYY-MM-DD dates\" value={String(params.search||'')} onChange={e=>setParams({search:e.target.value})}/>\n <Select id=\"usage-workspace\" labelText=\"Workspace\" value={String(params.workspace||'')} onChange={e=>setParams({workspace:e.target.value})}><SelectItem value=\"\" text=\"All workspaces\"/>{result.datasets.workspaces.rows.map(r=><SelectItem key={String(r[0])} value={String(r[0])} text={String(r[0])}/>)}</Select>\n <Select id=\"usage-aggregation\" labelText=\"Daily aggregation\" value={String(p[1])} onChange={e=>setParams({aggregation:e.target.value})}><SelectItem value=\"sum\" text=\"Sum of reported users\"/><SelectItem value=\"average\" text=\"Average per record\"/></Select>\n </div>\n <p>{result.includedRows} included records \u00b7 {result.excludedRows} excluded ({p[2]} filtered; {p[3]} invalid). {t.rows.length?'Visible dates: '+t.rows[0][0]+' \u2013 '+t.rows[t.rows.length-1][0]: 'No matching dates'}. Filters: {params.search||'all dates'}; workspace {params.workspace||'all'}.</p>\n {data.length?<LineChart data={data} options={options}/>:<p role=\"status\">No valid records match these filters.</p>}\n <div aria-label=\"Analytical caveats\">{result.warnings.map((x,i)=><p key={i}>{x}</p>)}<p>Blank or invalid dates and blank, negative, noninteger or nonfinite user counts are excluded. No deduplication; record counts are not distinct people. Missing workspace IDs are retained under All workspaces. Signups are not plotted.</p><p>Source revision: {p[0]}. Refresh timestamp unavailable. Date checks use {p[4]} UTC.</p></div>\n {t.rows.length>0&&<details><summary>Daily values and workspace coverage</summary><div style={{overflowX:'auto'}}><Table size=\"sm\" aria-label=\"Daily reported users and record coverage\"><TableHead><TableRow>{['Date','Users ('+p[1]+')','Records','Workspace IDs'].map(h=><TableHeader key={h}>{h}</TableHeader>)}</TableRow></TableHead><TableBody>{t.rows.map(r=><TableRow key={String(r[0])}>{r.map((x,i)=><TableCell key={i}>{i===1?Number(x).toLocaleString(undefined,{maximumFractionDigits:2}):String(x)||'(missing)'}</TableCell>)}</TableRow>)}</TableBody></Table></div></details>}\n </section>;\n}",
+    "checks": "export function checks(result,ctx){\n const s=ctx.sources.find(x=>x.id==='1c3f83a2-fb7c-4a76-91f3-2175eefe7a5b');if(!s)return [{name:'Required source exists',passed:false}];\n const idx=id=>s.columns.findIndex(c=>c.id===id),di=idx('c0'),vi=idx('c1'),wi=idx('c3');\n const valid=s.rows.filter(r=>{const date=r[di]||'',raw=(r[vi]||'').trim(),n=Number(raw);if(!date.toLowerCase().includes(String(ctx.params.search||'').toLowerCase())||(ctx.params.workspace&&r[wi]!==ctx.params.workspace))return false;const dt=new Date(date+'T00:00:00Z');return /^\\d{4}-\\d{2}-\\d{2}$/.test(date)&&!isNaN(dt.getTime())&&dt.toISOString().slice(0,10)===date&&raw!==''&&Number.isFinite(n)&&n>=0&&Math.floor(n)===n;});\n const dates=[...new Set(valid.map(r=>r[di]))].sort();const actual=result.datasets.daily.rows;\n const correct=dates.length===actual.length&&dates.every((date,i)=>{const subset=valid.filter(r=>r[di]===date);let expected=subset.reduce((n,r)=>n+Number(r[vi]),0);if(ctx.params.aggregation==='average')expected/=subset.length;return actual[i][0]===date&&Math.abs(actual[i][1]-expected)<=1e-9*Math.max(1,Math.abs(expected))&&actual[i][2]===subset.length&&actual[i][3]===[...new Set(subset.map(r=>r[wi]||''))].sort().join(', ');});\n return [{name:'Input and exclusion counts independently reconciled',passed:result.inputRows===s.rows.length&&result.includedRows===valid.length&&result.excludedRows===s.rows.length-valid.length},{name:'Daily values and workspace coverage independently recomputed',passed:correct},{name:'Finite nonnegative user values',passed:actual.every(r=>Number.isFinite(r[1])&&r[1]>=0)},{name:'Workspace identifiers preserved exactly',passed:JSON.stringify(result.datasets.workspaces.rows)===JSON.stringify([...new Set(s.rows.map(r=>r[wi]||'').filter(Boolean))].sort().map(x=>[x]))}];\n}"
+  },
+  "sources": [
+    {
+      "id": "1c3f83a2-fb7c-4a76-91f3-2175eefe7a5b",
+      "revision": "0f81394b-7808-4ec0-b86c-61f0bc47dd44",
+      "name": "product-usage.csv",
+      "imported": "2026-10-20T18:06:06.261Z",
+      "hash": "d9d3dbd8129c84b56b282b0b24d28f6c897de0fcd0d2ecc73ad20af33ddf4a42",
+      "bytes": 812,
+      "original": "ZGF0ZSxhY3RpdmVfdXNlcnMsc2lnbnVwcyx3b3Jrc3BhY2VfaWQKMjAyNi0xMC0wMSw4MjAsMzAsMDAwMDEKMjAyNi0xMC0wMiw4OTQsMzksMDAwMDIKMjAyNi0xMC0wMyw5NjgsNDgsMDAwMDMKMjAyNi0xMC0wNCwxMDQyLDU3LDAwMDA0CjIwMjYtMTAtMDUsMTExNiwzOCwwMDAwNQoyMDI2LTEwLTA2LDExOTAsNDcsMDAwMDEKMjAyNi0xMC0wNywxMjY0LDU2LDAwMDAyCjIwMjYtMTAtMDgsOTgxLDY1LDAwMDAzCjIwMjYtMTAtMDksMTA1NSw0NiwwMDAwNAoyMDI2LTEwLTEwLDExMjksNTUsMDAwMDUKMjAyNi0xMC0xMSwxMjAzLDY0LDAwMDAxCjIwMjYtMTAtMTIsMTI3Nyw3MywwMDAwMgoyMDI2LTEwLTEzLDEzNTEsNTQsMDAwMDMKMjAyNi0xMC0xNCwxNDI1LDYzLDAwMDA0CjIwMjYtMTAtMTUsMTE0Miw3MiwwMDAwNQoyMDI2LTEwLTE2LDEyMTYsODEsMDAwMDEKMjAyNi0xMC0xNywxMjkwLDYyLDAwMDAyCjIwMjYtMTAtMTgsMTM2NCw3MSwwMDAwMwoyMDI2LTEwLTE5LDE0MzgsODAsMDAwMDQKMjAyNi0xMC0yMCwxNTEyLDg5LDAwMDA1CjIwMjYtMTAtMjEsMTU4Niw3MCwwMDAwMQoyMDI2LTEwLTIyLDEzMDMsNzksMDAwMDIKMjAyNi0xMC0yMywxMzc3LDg4LDAwMDAzCjIwMjYtMTAtMjQsMTQ1MSw5NywwMDAwNAoyMDI2LTEwLTI1LDE1MjUsNzgsMDAwMDUKMjAyNi0xMC0yNiwxNTk5LDg3LDAwMDAxCjIwMjYtMTAtMjcsMTY3Myw5NiwwMDAwMgoyMDI2LTEwLTI4LDE3NDcsMTA1LDAwMDAzCjIwMjYtMTAtMjksMTQ2NCw4NiwwMDAwNAoyMDI2LTEwLTMwLDE1MzgsOTUsMDAwMDUKMjAyNi0xMC0zMSwxNjEyLDEwNCwwMDAwMQo=",
+      "text": "date,active_users,signups,workspace_id\n2026-10-01,820,30,00001\n2026-10-02,894,39,00002\n2026-10-03,968,48,00003\n2026-10-04,1042,57,00004\n2026-10-05,1116,38,00005\n2026-10-06,1190,47,00001\n2026-10-07,1264,56,00002\n2026-10-08,981,65,00003\n2026-10-09,1055,46,00004\n2026-10-10,1129,55,00005\n2026-10-11,1203,64,00001\n2026-10-12,1277,73,00002\n2026-10-13,1351,54,00003\n2026-10-14,1425,63,00004\n2026-10-15,1142,72,00005\n2026-10-16,1216,81,00001\n2026-10-17,1290,62,00002\n2026-10-18,1364,71,00003\n2026-10-19,1438,80,00004\n2026-10-20,1512,89,00005\n2026-10-21,1586,70,00001\n2026-10-22,1303,79,00002\n2026-10-23,1377,88,00003\n2026-10-24,1451,97,00004\n2026-10-25,1525,78,00005\n2026-10-26,1599,87,00001\n2026-10-27,1673,96,00002\n2026-10-28,1747,105,00003\n2026-10-29,1464,86,00004\n2026-10-30,1538,95,00005\n2026-10-31,1612,104,00001\n",
+      "delimiter": ",",
+      "header": true,
+      "columns": [
+        {
+          "id": "c0",
+          "original": "date",
+          "label": "date",
+          "type": "date",
+          "missing": [
+            ""
+          ]
+        },
+        {
+          "id": "c1",
+          "original": "active_users",
+          "label": "active_users",
+          "type": "number",
+          "missing": [
+            ""
+          ]
+        },
+        {
+          "id": "c2",
+          "original": "signups",
+          "label": "signups",
+          "type": "number",
+          "missing": [
+            ""
+          ]
+        },
+        {
+          "id": "c3",
+          "original": "workspace_id",
+          "label": "workspace_id",
+          "type": "text",
+          "missing": [
+            ""
+          ]
+        }
+      ],
+      "rows": [
+        [
+          "2026-10-01",
+          "820",
+          "30",
+          "00001"
+        ],
+        [
+          "2026-10-02",
+          "894",
+          "39",
+          "00002"
+        ],
+        [
+          "2026-10-03",
+          "968",
+          "48",
+          "00003"
+        ],
+        [
+          "2026-10-04",
+          "1042",
+          "57",
+          "00004"
+        ],
+        [
+          "2026-10-05",
+          "1116",
+          "38",
+          "00005"
+        ],
+        [
+          "2026-10-06",
+          "1190",
+          "47",
+          "00001"
+        ],
+        [
+          "2026-10-07",
+          "1264",
+          "56",
+          "00002"
+        ],
+        [
+          "2026-10-08",
+          "981",
+          "65",
+          "00003"
+        ],
+        [
+          "2026-10-09",
+          "1055",
+          "46",
+          "00004"
+        ],
+        [
+          "2026-10-10",
+          "1129",
+          "55",
+          "00005"
+        ],
+        [
+          "2026-10-11",
+          "1203",
+          "64",
+          "00001"
+        ],
+        [
+          "2026-10-12",
+          "1277",
+          "73",
+          "00002"
+        ],
+        [
+          "2026-10-13",
+          "1351",
+          "54",
+          "00003"
+        ],
+        [
+          "2026-10-14",
+          "1425",
+          "63",
+          "00004"
+        ],
+        [
+          "2026-10-15",
+          "1142",
+          "72",
+          "00005"
+        ],
+        [
+          "2026-10-16",
+          "1216",
+          "81",
+          "00001"
+        ],
+        [
+          "2026-10-17",
+          "1290",
+          "62",
+          "00002"
+        ],
+        [
+          "2026-10-18",
+          "1364",
+          "71",
+          "00003"
+        ],
+        [
+          "2026-10-19",
+          "1438",
+          "80",
+          "00004"
+        ],
+        [
+          "2026-10-20",
+          "1512",
+          "89",
+          "00005"
+        ],
+        [
+          "2026-10-21",
+          "1586",
+          "70",
+          "00001"
+        ],
+        [
+          "2026-10-22",
+          "1303",
+          "79",
+          "00002"
+        ],
+        [
+          "2026-10-23",
+          "1377",
+          "88",
+          "00003"
+        ],
+        [
+          "2026-10-24",
+          "1451",
+          "97",
+          "00004"
+        ],
+        [
+          "2026-10-25",
+          "1525",
+          "78",
+          "00005"
+        ],
+        [
+          "2026-10-26",
+          "1599",
+          "87",
+          "00001"
+        ],
+        [
+          "2026-10-27",
+          "1673",
+          "96",
+          "00002"
+        ],
+        [
+          "2026-10-28",
+          "1747",
+          "105",
+          "00003"
+        ],
+        [
+          "2026-10-29",
+          "1464",
+          "86",
+          "00004"
+        ],
+        [
+          "2026-10-30",
+          "1538",
+          "95",
+          "00005"
+        ],
+        [
+          "2026-10-31",
+          "1612",
+          "104",
+          "00001"
+        ]
+      ],
+      "warnings": [],
+      "confirmed": true
+    }
+  ]
+}

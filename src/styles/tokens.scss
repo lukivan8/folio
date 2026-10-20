@@ -1,0 +1,30 @@
+// Canonical values come from Carbon, shared by the host and isolated runtimes.
+@use "@carbon/styles/scss/themes" as themes;
+@use "@carbon/styles/scss/theme" as theme;
+@use "@carbon/layout" as layout;
+@use "@carbon/type" as type;
+@use "@carbon/colors" as colors;
+@use "@carbon/motion" as motion;
+:root {
+  @include theme.theme(themes.$white);
+  @each $name, $value in layout.$spacing {
+    --cds-#{$name}: #{$value};
+  }
+  --folio-font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  // Carbon's first four categorical colors; order follows the official palette.
+  --folio-chart-1: #{colors.$purple-70};
+  --folio-chart-2: #{colors.$cyan-50};
+  --folio-chart-3: #{colors.$teal-70};
+  --folio-chart-4: #{colors.$magenta-70};
+  --folio-shadow: 0 2px 6px #{theme.$shadow};
+  --folio-motion-fast: #{motion.$duration-fast-02};
+  font-family: var(--folio-font-family);
+  font-size: 100%;
+  color: var(--cds-text-primary);
+  background: var(--cds-background);
+  font-synthesis: none;
+}
+
+body {
+  @include type.type-style("body-01");
+}

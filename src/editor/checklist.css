@@ -1,0 +1,33 @@
+/* Carbon checkbox renders beside Tiptap's own editable contentDOM. */
+.prose-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin: var(--cds-spacing-04) 0;
+}
+.prose-editor .folio-task-item {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  gap: var(--cds-spacing-03);
+  align-items: start;
+  margin: var(--cds-spacing-03) 0;
+}
+.prose-editor .task-checkbox {
+  margin-top: calc((1.5em - 1.25rem) / 2);
+}
+.prose-editor .task-checkbox .cds--checkbox-wrapper {
+  margin: 0;
+}
+.prose-editor [data-task-content] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.prose-editor [data-task-content] > p {
+  margin: 0;
+}
+.prose-editor .folio-task-item[data-checked="true"] > [data-task-content] > p {
+  text-decoration: line-through;
+  color: var(--cds-text-secondary);
+}
+.prose-editor [data-task-content] > ul[data-type="taskList"] {
+  margin: var(--cds-spacing-03) 0 0;
+}

@@ -1,0 +1,119 @@
+{
+  "name": "folio-local",
+  "version": "0.1.0",
+  "description": "A local document workspace for inspectable interactive analysis",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "build-electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "preview": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node scripts/build.mjs",
+    "test": "tsx --test tests/*.test.ts",
+    "package": "npm run build && electron-builder --mac dir --arm64",
+    "test:ai": "tsx scripts/test-ai.ts",
+    "test:isolation": "tsx scripts/test-isolation.ts",
+    "format": "prettier --write src electron scripts tests .storybook *.ts *.json *.html docs/*.md",
+    "test:package": "tsx scripts/package-smoke.ts",
+    "storybook": "STORYBOOK_DISABLE_TELEMETRY=1 storybook dev --host 127.0.0.1 -p 6006 --no-open",
+    "build-storybook": "STORYBOOK_DISABLE_TELEMETRY=1 storybook build --output-dir storybook-static",
+    "test:components": "vitest run --config vitest.storybook.config.ts",
+    "check:ui": "npm run test:components && npm run build-storybook"
+  },
+  "dependencies": {
+    "@carbon/charts": "1.27.21",
+    "@carbon/charts-react": "1.27.21",
+    "@carbon/react": "1.118.0",
+    "@openai/codex": "0.155.1",
+    "@tiptap/core": "3.32.0",
+    "@tiptap/extension-table": "3.32.0",
+    "@tiptap/extension-task-item": "3.32.0",
+    "@tiptap/extension-task-list": "3.32.0",
+    "@tiptap/react": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0",
+    "esbuild": "0.25.11",
+    "papaparse": "5.5.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "recharts": "3.3.0",
+    "typescript": "5.9.3",
+    "zod": "4.1.12",
+    "@carbon/styles": "1.117.0",
+    "@carbon/themes": "11.83.0",
+    "@carbon/colors": "11.60.0",
+    "@carbon/layout": "11.61.0",
+    "@carbon/type": "11.69.0",
+    "@carbon/motion": "11.54.0",
+    "@ibm/plex": "6.4.1"
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "10.6.3",
+    "@storybook/addon-docs": "10.6.3",
+    "@storybook/addon-vitest": "10.6.3",
+    "@storybook/react-vite": "10.6.3",
+    "@types/node": "22.19.0",
+    "@types/papaparse": "5.3.16",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "5.0.4",
+    "@vitest/browser": "4.1.12",
+    "@vitest/browser-playwright": "4.1.12",
+    "electron": "44.9.1",
+    "electron-builder": "26.0.12",
+    "playwright": "1.58.2",
+    "prettier": "3.6.2",
+    "storybook": "10.6.3",
+    "tsx": "4.20.6",
+    "vite": "7.1.12",
+    "vitest": "4.1.12",
+    "sass": "1.105.2"
+  },
+  "build": {
+    "appId": "org.folio.local",
+    "productName": "Folio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "build-electron/**/*",
+      "package.json",
+      "docs/**/*",
+      "LICENSE",
+      "README.md",
+      "fixtures/**/*",
+      "skills/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "icon": "build/icon.icns"
+    },
+    "artifactName": "Folio-${version}-${arch}.${ext}",
+    "extraResources": [
+      {
+        "from": "node_modules/typescript/lib",
+        "to": "folio-types/typescript",
+        "filter": [
+          "*.d.ts"
+        ]
+      }
+    ]
+  },
+  "author": "Folio contributors",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lukivan8/folio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lukivan8/folio/issues"
+  },
+  "homepage": "https://github.com/lukivan8/folio#readme"
+}
